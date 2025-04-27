@@ -13,7 +13,7 @@
 <!-- Contenido -->
 <div class="ml-64 p-6 w-full">
     <h1 class="text-3xl font-bold">Usuarios</h1>
-    <p class="mt-4">Sección de gestión de usuarios (próximamente).</p>
+    <p class="mt-4">Sección de gestión de usuarios (todo).</p>
 </div>
 </body>
 </html>
