@@ -1,0 +1,146 @@
+<div
+  class="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+  <div class="max-w-full overflow-x-auto">
+    <table class="min-w-full">
+      <!-- table header start -->
+      <thead>
+        <tr class="border-b border-gray-100 dark:border-gray-800">
+          <th class="px-5 py-3 sm:px-6">
+            <div class="flex items-center">
+              <p
+                class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">
+                Name
+              </p>
+            </div>
+          </th>
+          <th class="px-5 py-3 sm:px-6">
+            <div class="flex items-center">
+              <p
+                class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">
+                Access time
+              </p>
+            </div>
+          </th>
+          <th class="px-5 py-3 sm:px-6">
+            <div class="flex items-center">
+              <p
+                class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">
+                Headquarter
+              </p>
+            </div>
+          </th>
+          <th class="px-5 py-3 sm:px-6">
+            <div class="flex items-center">
+              <p
+                class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">
+                Access method
+              </p>
+            </div>
+          </th>
+          <th class="px-5 py-3 sm:px-6">
+            <div class="flex items-center">
+              <p
+                class="font-medium text-gray-500 text-theme-xs dark:text-gray-400">
+                Access key
+              </p>
+            </div>
+          </th>
+        </tr>
+      </thead>
+      <!-- table header end -->
+      <!-- table body start -->
+      <tbody id="table-body"
+        class="divide-y divide-gray-100 dark:divide-gray-800">
+        
+      </tbody>
+    </table>
+  </div>
+</div>
+<script>
+  document.addEventListener("DOMContentLoaded", async () => {
+    const apiKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtkdW91ZG1uaXFqdGFydGxsb3puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDM5MzUwNzcsImV4cCI6MjA1OTUxMTA3N30.T1mpTXZaGF8AIzvQ96jeQh95Vo4cfLCiWh0QSH0Ea84";
+    const url = "https://kduoudmniqjtartllozn.supabase.co/rest/v1/access_logs?select=*,locations(*),users(*),fingerprints(*)";
+
+    try {
+      const response = await fetch(url, {
+        headers: {
+          apikey: apiKey,
+          Authorization: "Bearer " + apiKey,
+          "Content-Type": "application/json",
+        },
+      });
+      const data = await response.json();
+      renderTable(data);
+    } catch (error) {
+      console.error("Error al obtener los datos:", error);
+      document.getElementById("table-body").innerHTML =
+        "<tr><td colspan='7' class='py-4 text-center'>Error cargando datos.</td></tr>";
+    }
+  });
+
+  function renderTable(data) {
+    const tbody = document.getElementById("table-body");
+    console.log(tbody);
+    if (!data.length) {
+      tbody.innerHTML =
+        "<tr><td colspan='7' class='py-4 text-center'>No hay registros de acceso.</td></tr>";
+      return;
+    }
+
+    tbody.innerHTML = data
+      .map((row) => {
+        return `
+          <tr>
+            <td class="px-5 py-4 sm:px-6">
+              <div class="flex items-center">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 overflow-hidden rounded-full">
+                    <img src="${row.users?.photo ?? ""}" alt="user" />
+                  </div>
+                  <div>
+                    <span class="block font-medium text-gray-800 text-theme-sm dark:text-white/90">
+                      ${row.users?.name ?? "Nombre desconocido"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </td>
+            <td class="px-5 py-4 sm:px-6">
+              <div class="flex items-center">
+                <p class="text-gray-500 text-theme-sm dark:text-gray-400">
+                  ${new Date(row.access_time).toLocaleString()}
+                </p>
+              </div>
+            </td>
+            <td class="px-5 py-4 sm:px-6">
+              <div class="flex items-center">
+                <p class="text-gray-500 text-theme-sm dark:text-gray-400">
+                  ${row.locations?.name ?? "Desconocida"}
+                </p>
+              </div>
+            </td>
+            <td class="px-5 py-4 sm:px-6">
+              <div class="flex items-center">
+                <p class="rounded-full 
+                  ${row.access_method === 'RFID' ? 'bg-success-50 text-success-700' : 'bg-warning-50 text-warning-600'} 
+                    px-2 py-0.5 text-theme-xs font-medium 
+                  ${row.access_method === 'FINGERPRINT' ? 'dark:bg-success-500/15 dark:text-success-500' : 'dark:bg-warning-500/15 dark:text-orange-400'}">
+                  ${row.access_method ?? "N/A"}
+                </p>
+              </div>
+            </td>
+            <td class="px-5 py-4 sm:px-6">
+              <div class="flex items-center">
+                <p class="text-gray-500 text-theme-sm dark:text-gray-400">
+                  ${row.access_method === 'RFID' 
+                    ? `*${row.rfid_card_code.slice(-4)}` 
+                    : row.fingerprints?.fingerprint_sensor_id ?? "N/A"}
+                </p>
+              </div>
+            </td>
+          </tr>
+        `;
+      })
+      .join("");
+  }
+</script>
