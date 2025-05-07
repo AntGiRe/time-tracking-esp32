@@ -1,0 +1,8 @@
+- Adafruit Fingerprint Sensor Library instalado
+- Velocidad del programa 115200 baudios
+- Se conectan unicamente 4 cables del sensor
+	- Tierra (cable negro) al GND
+	- Voltaje (cable rojo) al 3.3
+	- TX (cable amarillo) al RX2
+	- RX(cable blanco) al TX2
+- Probar a reiniciar esp32 si no va
