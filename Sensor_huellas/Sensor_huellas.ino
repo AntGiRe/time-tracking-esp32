@@ -1,3 +1,5 @@
+#include <WiFi.h>
+#include <ESPSupabase.h>
 #include <Adafruit_Fingerprint.h>
 #include <HardwareSerial.h>
 #include <SPI.h>
@@ -6,27 +8,30 @@
 // ---------------------
 // Pines y configuración
 // ---------------------
-
-// Sensor de huellas (UART por Serial2)
 HardwareSerial mySerial(2);  // RX = GPIO16, TX = GPIO17
 Adafruit_Fingerprint finger = Adafruit_Fingerprint(&mySerial);
-
-// Sensor RFID RC522 (SPI)
 #define SS_PIN 5
 #define RST_PIN 22
 MFRC522 mfrc522(SS_PIN, RST_PIN);
-
-// Pines para salidas
 #define LED_VERDE 14
 #define LED_ROJO 27
 #define BUZZER 26
 
-// UIDs autorizados (usa tus propios valores aquí)
-const byte authorizedUIDs[][4] = {
-  {0x5B, 0x9D, 0xAA, 0x00},
-  {0x09, 0xCE, 0x49, 0x05}
-};
-const int numUIDs = sizeof(authorizedUIDs) / sizeof(authorizedUIDs[0]);
+// ---------------------
+// Wi-Fi y Supabase
+// ---------------------
+const char* ssid = "vodafone7801";
+const char* password = "5BDJYZMCC74C85";
+const char* supabaseUrl = "https://kduoudmniqjtartllozn.supabase.co";
+const char* supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtkdW91ZG1uaXFqdGFydGxsb3puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDM5MzUwNzcsImV4cCI6MjA1OTUxMTA3N30.T1mpTXZaGF8AIzvQ96jeQh95Vo4cfLCiWh0QSH0Ea84"; // Oculto por seguridad
+
+Supabase supabase;
+
+// ---------------------
+// Config estática
+// ---------------------
+const int STATIC_EMPLOYEE_ID = 3;
+const int STATIC_LOCATION_ID = 1;
 
 int currentId = 1;
 
@@ -37,7 +42,6 @@ void setup() {
   Serial.begin(115200);
   while (!Serial);
 
-  // Inicializar salidas
   pinMode(LED_VERDE, OUTPUT);
   pinMode(LED_ROJO, OUTPUT);
   pinMode(BUZZER, OUTPUT);
@@ -45,7 +49,21 @@ void setup() {
   digitalWrite(LED_ROJO, LOW);
   digitalWrite(BUZZER, LOW);
 
-  // Inicializar sensor de huellas
+  // Wi-Fi
+  WiFi.begin(ssid, password);
+  Serial.print("Conectando a Wi-Fi");
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("\n✅ Wi-Fi conectado");
+
+
+  // Supabase
+  supabase.begin(supabaseUrl, supabaseKey);
+  Serial.println("✅ Supabase inicializado");
+
+  // Sensor huellas
   mySerial.begin(57600, SERIAL_8N1, 16, 17);
   finger.begin(57600);
   Serial.println("Inicializando sensor de huellas...");
@@ -55,19 +73,17 @@ void setup() {
     Serial.println("❌ Error al iniciar sensor de huellas.");
     while (1);
   }
-
   finger.getTemplateCount();
   currentId = finger.templateCount + 1;
-  Serial.println("Escribe 'r' y pulsa ENTER para registrar una nueva huella.");
 
-  // Inicializar sensor RFID
+  // Sensor RFID
   SPI.begin();  // SPI = GPIO 18, 19, 23
   mfrc522.PCD_Init();
   Serial.println("✅ Sensor RFID listo.");
 }
 
 // ---------------------
-// Loop principal
+// Loop
 // ---------------------
 void loop() {
   if (Serial.available()) {
@@ -86,9 +102,8 @@ void loop() {
   // Verificar huella
   uint8_t resultado = checkFingerprint();
   if (resultado == FINGERPRINT_OK) {
-    accesoConcedido("Huella válida");
+  accesoConcedidoFingerprint(finger.fingerID);
   } else if (resultado == FINGERPRINT_NOTFOUND) {
-    Serial.println("❌ Huella no reconocida.");
     accesoDenegado("Huella no válida");
   }
 
@@ -118,8 +133,7 @@ uint8_t enrollFingerprint(int id) {
   p = finger.createModel();
   if (p != FINGERPRINT_OK) return p;
   Serial.println("💾 Guardando huella con ID: " + String(id));
-  p = finger.storeModel(id);
-  return p;
+  return finger.storeModel(id);
 }
 
 uint8_t checkFingerprint() {
@@ -138,34 +152,45 @@ uint8_t checkFingerprint() {
 // ============================
 // FUNCIONES DE RFID
 // ============================
+
+int getEmployeeIdFromRFID(String uidHex) {
+  String result = supabase
+                    .from("users")
+                    .select("*")
+                    .eq("rfid_card", uidHex)
+                    .limit(1)
+                    .doSelect();
+
+  if (result.indexOf("id") != -1) {
+    int idIndex = result.indexOf("\"id\":") + 5;
+    int commaIndex = result.indexOf(",", idIndex);
+    String idStr = result.substring(idIndex, commaIndex);
+    int employeeId = idStr.toInt();
+
+    Serial.println("🧑‍💼 Employee ID encontrado: " + String(employeeId));
+    return employeeId;
+  } else {
+    Serial.println("⚠️ UID no registrado en Supabase");
+    return -1;
+  }
+}
+
 void checkRFID() {
   if (!mfrc522.PICC_IsNewCardPresent() || !mfrc522.PICC_ReadCardSerial()) return;
 
-  Serial.print("🎟️  RFID detectado. UID: ");
   byte *uid = mfrc522.uid.uidByte;
+  String uidStr = "";
   for (byte i = 0; i < mfrc522.uid.size; i++) {
-    Serial.print(uid[i] < 0x10 ? " 0" : " ");
-    Serial.print(uid[i], HEX);
+    if (uid[i] < 0x10) uidStr += "0";
+    uidStr += String(uid[i], HEX);
   }
-  Serial.println();
+  uidStr.toUpperCase();
 
-  bool autorizado = false;
-  for (int i = 0; i < numUIDs; i++) {
-    bool coincide = true;
-    for (int j = 0; j < 4; j++) {
-      if (authorizedUIDs[i][j] != uid[j]) {
-        coincide = false;
-        break;
-      }
-    }
-    if (coincide) {
-      autorizado = true;
-      break;
-    }
-  }
+  Serial.println("🎟️  UID leído: " + uidStr);
 
-  if (autorizado) {
-    accesoConcedido("RFID autorizado");
+  int employeeId = getEmployeeIdFromRFID(uidStr);
+  if (employeeId > 0) {
+    accesoConcedidoRFID(employeeId, uidStr);
   } else {
     accesoDenegado("RFID no autorizado");
   }
@@ -176,14 +201,56 @@ void checkRFID() {
 // ============================
 // FUNCIONES DE CONTROL
 // ============================
-void accesoConcedido(String fuente) {
-  Serial.println("✅ Acceso concedido por " + fuente);
+void accesoConcedidoRFID(int employeeId, String uidStr) {
+  Serial.println("✅ Acceso concedido por RFID");
   digitalWrite(LED_VERDE, HIGH);
   digitalWrite(BUZZER, HIGH);
   delay(200);
   digitalWrite(BUZZER, LOW);
   delay(1000);
   digitalWrite(LED_VERDE, LOW);
+
+  String json = "{";
+  json += "\"employee_id\": " + String(employeeId) + ",";
+  json += "\"location_id\": " + String(STATIC_LOCATION_ID) + ",";
+  json += "\"access_method\": \"rfid\",";
+  json += "\"rfid_card_code\": \"" + uidStr + "\",";
+  json += "\"fingerprint_id\": null";
+  json += "}";
+
+  int response = supabase.insert("access_logs", json, false);
+  if (response == 201) {
+    Serial.println("📝 Registro insertado correctamente en Supabase");
+  } else {
+    Serial.print("⚠️ Error al insertar en Supabase. Código: ");
+    Serial.println(response);
+  }
+}
+
+void accesoConcedidoFingerprint(int fingerprintId) {
+  Serial.println("✅ Acceso concedido por huella");
+  digitalWrite(LED_VERDE, HIGH);
+  digitalWrite(BUZZER, HIGH);
+  delay(200);
+  digitalWrite(BUZZER, LOW);
+  delay(1000);
+  digitalWrite(LED_VERDE, LOW);
+
+  String json = "{";
+  json += "\"employee_id\": " + String(STATIC_EMPLOYEE_ID) + ",";  // Por ahora sigue siendo estático
+  json += "\"location_id\": " + String(STATIC_LOCATION_ID) + ",";
+  json += "\"access_method\": \"fingerprint\",";
+  json += "\"fingerprint_id\": " + String(fingerprintId) + ",";
+  json += "\"rfid_card_code\": \"EMPTY\"";
+  json += "}";
+
+  int response = supabase.insert("access_logs", json, false);
+  if (response == 201) {
+    Serial.println("📝 Registro insertado correctamente en Supabase");
+  } else {
+    Serial.print("⚠️ Error al insertar en Supabase. Código: ");
+    Serial.println(response);
+  }
 }
 
 void accesoDenegado(String fuente) {
