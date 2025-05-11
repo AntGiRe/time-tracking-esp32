@@ -73,7 +73,6 @@
       console.log(data);
       renderTable(data);
     } catch (error) {
-      console.error("Error al obtener los datos:", error);
       document.getElementById("table-body").innerHTML =
         "<tr><td colspan='7' class='py-4 text-center'>Error cargando datos.</td></tr>";
     }
@@ -90,7 +89,6 @@
 
     tbody.innerHTML = data
       .map((row) => {
-        console.log(row.rfid_card_code);
         return `
           <tr>
             <td class="px-5 py-4 sm:px-6">
