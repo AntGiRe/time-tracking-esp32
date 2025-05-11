@@ -70,6 +70,7 @@
         },
       });
       const data = await response.json();
+      console.log(data);
       renderTable(data);
     } catch (error) {
       console.error("Error al obtener los datos:", error);
@@ -89,6 +90,7 @@
 
     tbody.innerHTML = data
       .map((row) => {
+        console.log(row.rfid_card_code);
         return `
           <tr>
             <td class="px-5 py-4 sm:px-6">
@@ -122,17 +124,17 @@
             <td class="px-5 py-4 sm:px-6">
               <div class="flex items-center">
                 <p class="rounded-full 
-                  ${row.access_method === 'RFID' ? 'bg-success-50 text-success-700' : 'bg-warning-50 text-warning-600'} 
+                  ${row.access_method?.toUpperCase() === 'RFID' ? 'bg-success-50 text-success-700' : 'bg-warning-50 text-warning-600'}
                     px-2 py-0.5 text-theme-xs font-medium 
-                  ${row.access_method === 'FINGERPRINT' ? 'dark:bg-success-500/15 dark:text-success-500' : 'dark:bg-warning-500/15 dark:text-orange-400'}">
-                  ${row.access_method ?? "N/A"}
+                  ${row.access_method?.toUpperCase() === 'FINGERPRINT' ? 'dark:bg-success-500/15 dark:text-success-500' : 'dark:bg-warning-500/15 dark:text-orange-400'}">
+                  ${row.access_method?.toUpperCase() ?? "N/A"}
                 </p>
               </div>
             </td>
             <td class="px-5 py-4 sm:px-6">
               <div class="flex items-center">
                 <p class="text-gray-500 text-theme-sm dark:text-gray-400">
-                  ${row.access_method === 'RFID' 
+                  ${row.access_method?.toUpperCase() === 'RFID' 
                     ? `*${row.rfid_card_code.slice(-4)}` 
                     : row.fingerprints?.fingerprint_sensor_id ?? "N/A"}
                 </p>
