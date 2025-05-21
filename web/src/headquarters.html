@@ -10,7 +10,7 @@
     <title>Calendar | Time Tracking Dashboard</title>
   </head>
   <body
-    x-data="{ page: 'calendar', 'loaded': true, 'darkMode': false, 'stickyMenu': false, 'sidebarToggle': false, 'scrollTop': false }"
+    x-data="{ page: 'headquarters', 'loaded': true, 'darkMode': false, 'stickyMenu': false, 'sidebarToggle': false, 'scrollTop': false }"
     x-init="
          darkMode = JSON.parse(localStorage.getItem('darkMode'));
          $watch('darkMode', value => localStorage.setItem('darkMode', JSON.stringify(value)))"
@@ -49,7 +49,7 @@
                   <h3
                     class="text-base font-medium text-gray-800 dark:text-white/90"
                   >
-                    Headqurters
+                    Headquarters
                   </h3>
                 </div>
                 <div
