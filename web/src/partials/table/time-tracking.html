@@ -51,16 +51,18 @@
       <!-- table body start -->
       <tbody id="table-body"
         class="divide-y divide-gray-100 dark:divide-gray-800">
-        
+        <!-- Table rows will be inserted here by JavaScript -->
       </tbody>
     </table>
   </div>
 </div>
 <script>
   document.addEventListener("DOMContentLoaded", async () => {
+    // apikey and url for supabase
     const apiKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtkdW91ZG1uaXFqdGFydGxsb3puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDM5MzUwNzcsImV4cCI6MjA1OTUxMTA3N30.T1mpTXZaGF8AIzvQ96jeQh95Vo4cfLCiWh0QSH0Ea84";
     const url = "https://kduoudmniqjtartllozn.supabase.co/rest/v1/access_logs?select=*,locations(*),users(*),fingerprints(*)";
 
+    // Fetch data from the API
     try {
       const response = await fetch(url, {
         headers: {
@@ -78,6 +80,10 @@
     }
   });
 
+  /**
+   * Renders the table with the provided data.
+   * @param {Array} data - The data to render in the table.
+   */
   function renderTable(data) {
     const tbody = document.getElementById("table-body");
     console.log(tbody);
